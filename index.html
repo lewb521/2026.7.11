@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>杜浩快跑</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            overflow: hidden;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(255,255,255,0.7);
+            font-size: 20px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            z-index: 10;
+        }
+        #highScore {
+            position: absolute;
+            top: 44px;
+            left: 20px;
+            color: rgba(255,255,255,0.35);
+            font-size: 13px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            z-index: 10;
+        }
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.55);
+            pointer-events: auto;
+            z-index: 20;
+        }
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.55);
+            pointer-events: auto;
+            z-index: 20;
+        }
+        .title {
+            color: #fff;
+            font-size: 32px;
+            font-weight: 300;
+            margin-bottom: 8px;
+            letter-spacing: 4px;
+            text-shadow: 0 0 20px rgba(255,255,255,0.15);
+        }
+        .subtitle {
+            color: rgba(255,255,255,0.35);
+            font-size: 14px;
+            margin-bottom: 36px;
+            letter-spacing: 3px;
+            font-weight: 300;
+        }
+        .btn {
+            padding: 12px 48px;
+            font-size: 17px;
+            color: rgba(255,255,255,0.9);
+            background: transparent;
+            border: 1.5px solid rgba(255,255,255,0.25);
+            border-radius: 8px;
+            cursor: pointer;
+            pointer-events: auto;
+            letter-spacing: 2px;
+            font-weight: 400;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn:hover {
+            border-color: rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+        }
+        .btn:active {
+            transform: scale(0.97);
+            background: rgba(255,255,255,0.1);
+        }
+        #finalScore {
+            color: rgba(255,255,255,0.5);
+            font-size: 22px;
+            font-weight: 300;
+            margin: 12px 0;
+            letter-spacing: 2px;
+        }
+        #jumpHint {
+            position: absolute;
+            bottom: 80px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+            pointer-events: none;
+        }
+        #totalScoreDisplay {
+            color: rgba(255,255,255,0.35) !important;
+            font-size: 14px !important;
+            font-weight: 300 !important;
+            margin-bottom: 28px !important;
+            letter-spacing: 2px;
+        }
+        /* ===== 字幕样式 ===== */
+        #subtitleBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(0, 0, 0, 0.85);
+            border: 3px solid #c62828;
+            border-radius: 16px;
+            padding: 20px 40px;
+            z-index: 30;
+            pointer-events: none;
+            opacity: 0;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+        }
+        #subtitleBox.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+        #subtitleText {
+            color: #ff4444;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+            white-space: nowrap;
+        }
+        #subtitleBox::before {
+            content: '';
+            position: absolute;
+            top: -3px; left: -3px; right: -3px; bottom: -3px;
+            border-radius: 16px;
+            border: 2px solid rgba(255, 68, 68, 0.3);
+            animation: pulseBorder 1s infinite;
+        }
+        @keyframes pulseBorder {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        /* ===== 商店弹窗样式 ===== */
+        #shopOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0);
+            backdrop-filter: blur(0px);
+            -webkit-backdrop-filter: blur(0px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease, backdrop-filter 0.5s ease, -webkit-backdrop-filter 0.5s ease, background 0.5s ease;
+        }
+        #shopOverlay.show {
+            opacity: 1;
+            pointer-events: auto;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        #shopWindow {
+            background: rgba(20,20,40,0.95);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 28px;
+            width: 90%;
+            max-width: 380px;
+            transform: scale(0.92) translateY(20px);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #shopOverlay.show #shopWindow {
+            transform: scale(1) translateY(0);
+        }
+        .shopTitle {
+            color: rgba(255,255,255,0.8);
+            font-size: 20px;
+            font-weight: 300;
+            text-align: center;
+            margin-bottom: 20px;
+            letter-spacing: 3px;
+        }
+        .shopItem {
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid rgba(255,255,255,0.06);
+            transition: background 0.2s;
+        }
+        .shopItem:hover {
+            background: rgba(255,255,255,0.06);
+        }
+        .shopItemInfo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .shopItemIcon {
+            width: 48px; height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .shopItemName {
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .shopItemDesc {
+            color: #aaa;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        .shopItemPrice {
+            color: #ffd700;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .shopBtn {
+            padding: 8px 20px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.85);
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.25s ease;
+        }
+        .shopBtn:hover {
+            border-color: rgba(255,255,255,0.5);
+            background: rgba(255,255,255,0.06);
+        }
+        .shopBtn:active { transform: scale(0.97); }
+        .shopBtn:disabled {
+            background: transparent;
+            border-color: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.25);
+            cursor: not-allowed;
+        }
+        .shopBtn.owned {
+            border-color: rgba(76,175,80,0.5);
+            color: #4CAF50;
+        }
+        #shopCloseBtn {
+            margin-top: 15px;
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+        }
+        .shopTotalScore {
+            text-align: center;
+            color: rgba(255,255,255,0.45);
+            font-size: 15px;
+            font-weight: 300;
+            margin-bottom: 20px;
+            padding: 8px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+            letter-spacing: 1px;
+        }
+        /* 反馈邮箱 */
+        .feedback {
+            color: rgba(255,255,255,0.12);
+            font-size: 11px;
+            font-weight: 300;
+            margin-top: 28px;
+            letter-spacing: 1px;
+        }
+        /* 杜浩快跑 UI 精修 */
+        #score, #highScore { text-shadow:0 2px 12px rgba(0,0,0,.35); }
+        #score { color:#fff; font-weight:800; letter-spacing:.5px; }
+        #highScore { color:rgba(220,244,255,.78); }
+        #jumpHint { animation:dhHint 1.8s ease-in-out infinite; }
+        #startScreen, #gameOverScreen { backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); padding:24px; }
+        .title { text-shadow:0 4px 0 rgba(0,0,0,.2),0 0 28px rgba(124,236,255,.3); animation:dhTitleIn .65s cubic-bezier(.2,.8,.2,1) both; }
+        .subtitle { text-shadow:0 2px 10px rgba(0,0,0,.35); }
+        .btn, .shopBtn { transition:transform .16s ease,filter .2s ease,box-shadow .2s ease; }
+        .btn:active, .shopBtn:active { transform:scale(.96); }
+        #subtitleBox { border:1px solid rgba(255,255,255,.16); box-shadow:0 12px 38px rgba(0,0,0,.28); backdrop-filter:blur(8px); }
+        @keyframes dhTitleIn { from {opacity:0;transform:translateY(14px) scale(.97)} to {opacity:1;transform:translateY(0) scale(1)} }
+        @keyframes dhHint { 0%,100% {opacity:.65;transform:translateY(0)} 50% {opacity:1;transform:translateY(-3px)} }
+        @media(max-width:600px) { .title{font-size:clamp(30px,9vw,52px)} #score{top:calc(14px + env(safe-area-inset-top));left:14px;font-size:18px} #highScore{top:calc(40px + env(safe-area-inset-top));left:14px} .btn{min-height:44px} }
+        @media(prefers-reduced-motion:reduce) { *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important} }
+
+        /* ===== 灵力开发（后门触发器） ===== */
+        #devTrigger {
+            position: absolute;
+            top: 18px;
+            left: 22px;
+            color: rgba(255,255,255,0.88);
+            font-size: 34px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            cursor: pointer;
+            pointer-events: auto;
+            -webkit-user-select: none;
+            user-select: none;
+            z-index: 6;
+            text-shadow: 0 0 14px rgba(124,236,255,.55);
+            transition: transform .12s ease, color .2s ease, text-shadow .2s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #devTrigger.holding {
+            transform: scale(1.14);
+            color: #7cecff;
+            text-shadow: 0 0 26px rgba(124,236,255,.9);
+        }
+
+        /* ===== 骗局弹窗 ===== */
+        #scamOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.88);
+            z-index: 200;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #scamOverlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #scamWindow {
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #scamOverlay.show #scamWindow { transform: scale(1); }
+        .scamText {
+            color: #ff3b3b;
+            font-size: 64px;
+            font-weight: 900;
+            letter-spacing: 8px;
+            margin-bottom: 34px;
+            text-shadow: 0 0 34px rgba(255,59,59,.6);
+            animation: scamPulse 0.8s ease-in-out infinite;
+        }
+        @keyframes scamPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+</style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui">
+            <div id="score">得分: 0</div>
+            <div id="highScore">最高分: 0</div>
+            <div id="jumpHint">点击屏幕跳跃</div>
+        </div>
+        <!-- 字幕弹窗 -->
+        <div id="subtitleBox">
+            <div id="subtitleText">下学生处去</div>
+        </div>
+        <div id="startScreen">
+            <div id="devTrigger">灵力开发</div>
+            <div class="title">杜浩快跑</div>
+            <div class="subtitle">杜浩快跑！闪避处分单，冲向自由！</div>
+            <div id="totalScoreDisplay">累计分数: 0</div>
+            <button class="btn" id="startBtn">开始游戏</button>
+            <button class="btn" id="shopBtn" style="margin-top:12px;">商店</button>
+            <div class="feedback">问题反馈 lewbtxdy@outlook.com</div>
+        </div>
+        <!-- 商店弹窗 -->
+        <div id="shopOverlay">
+            <div id="shopWindow">
+                <div class="shopTitle">商店</div>
+                <div class="shopTotalScore" id="shopTotalScore">累计分数: 0</div>
+                <div class="shopItem">
+                    <div class="shopItemInfo">
+                        <div class="shopItemIcon" style="background:rgba(255,255,255,0.04);">⚫</div>
+                        <div>
+                            <div class="shopItemName">黑蛋皮肤</div>
+                            <div class="shopItemDesc">变成一个黑卤蛋</div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="shopItemPrice">2000分</div>
+                        <button class="shopBtn" id="buyBlackEgg">购买</button>
+                    </div>
+                </div>
+                <div class="shopItem">
+                    <div class="shopItemInfo">
+                        <div class="shopItemIcon" style="background:rgba(255,255,255,0.04);">✨</div>
+                        <div>
+                            <div class="shopItemName">拖尾特效</div>
+                            <div class="shopItemDesc">奔跑时留下炫彩拖尾</div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="shopItemPrice">20000分</div>
+                        <button class="shopBtn" id="buyTrail">购买</button>
+                    </div>
+                </div>
+                <button class="shopBtn" id="shopCloseBtn">关闭</button>
+            </div>
+        </div>
+        <div id="gameOverScreen">
+            <div class="title">游戏结束</div>
+            <div id="finalScore">得分: 0</div>
+            <button class="btn" id="restartBtn">再来一次</button>
+            <button class="btn" id="homeBtn" style="margin-top:12px;">前往主页</button>
+        </div>
+        <!-- 骗局弹窗 -->
+        <div id="scamOverlay">
+            <div id="scamWindow">
+                <div class="scamText">你被骗了!</div>
+                <button class="btn" id="scamOkBtn">好的</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+// ==================== 游戏配置 ====================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// 原始人物图像：请将 boss_head.png 与本 HTML 放在同一目录，图像文件不做任何修改。
+const bossPortrait = new Image();
+bossPortrait.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAYAAAAUg66AAAAYZElEQVR4nO3dWZCld1nH8f+7nKW3me4ksyeTDFnGTIiGsEdCDCIWi7JoBG+wWNRICguqrJJCuaAsLywsq1SuKDAWagQEDKCGwgKjCUtCiKnBkDAQkgDJLMn09Ewvp895N2+8MJOq34+pzuSZhO/nMs9Z3/P20++c/Pp5spu/9M2k5F0l621X6/qkk/U6tfr+ST++fnSv6zJZz4tC3z9rNvgKnL6s6qOXUpHpI9Tm+v5Zpo9P6vTxsfdP+v5O1+n3556/M+dv1uq61ZpPqDEfQNLnV2vPgA2en+b45u4HsNGvz717ADhtaEAAwtCAAIShAQEIQwMCEIYGBCAMDQhAmLJdX5Y3aHOTMzBBksbkBDKXU2h1vTA5j8bkYLJC3791OZ9Ov//MtPjC5GhSY95/YZ7AHP/cxUTMy8tzfYPKfX4mSNJ2+vwrcv3+3eFJyXz+TU8/votJmed3x7/L9PNn5vg17viaz6c0r69xOR/3/nUZAE4fGhCAMDQgAGFoQADC0IAAhKEBAQhDAwIQpmzakbxB1pXmIXRQIDdBksaMWzExk9SYB+hMUCPb4DwaO++mNjkNc/wKM49oo/NeWvPy82Q+fzPvpl/q+3etmTdjglSdyQl1Jqfmzs+yMDkyd/wzc/xMOTPzitw4nr45fo35/DN3+rmfLxMj5AoIQBgaEIAwNCAAYWhAAMLQgACEoQEBCEMDAhCm3J+eJ2+waf2Hsj5z7B5ZX0hjWa/7Zp5ProMSMwvbZX1iciL9clbWy/6crJsYSzLjiGyOqF5ZkvWu0vOcVpYfl/WFLfOy3k5WZD1zA48mbuCNDZpssK5lZmCQ26tm92KZoE9n5vE4VbMq63Wr9/ql0rx/c3zdFYw7v7kCAhCGBgQgDA0IQBgaEIAwNCAAYWhAAMLQgACEKR+e3SFvsGPpUVkfTg7Kem/qmKw3I53TafJ5WS+2ni3r+UQHNaZnpmW9XwxkvTJ7uzK3GKnR85gm2QlZn9qkc1YrSw/I+nS+Vdbzvtn7ZCbSuL1TjpsX1OSTDT1+aXIqhcnJZCbH1NQ6h9N2+vh0nX7//Vp//uN1nRPKe3rvWG7mGbl5VXlJDgjAGYoGBCAMDQhAGBoQgDA0IABhaEAAwtCAAIQpH/6enhezvadzCoNC5wTypHMkw77ugZXpkflQz+tJ7bosd2bxWNbTz1/qGEXqarP3K5+S9aWRzpE0E/3+5ufmZb2tdY5myn2+rl7q9+f2inW5zrn4X6Emh2QWY5kYTurMvJ3cPH9r5g25nFBm9q71pzbLuttLl5JZHOY2k5m9eFwBAQhDAwIQhgYEIAwNCEAYGhCAMDQgAGFoQADClM99wTnyBmc9quf95I/oHMfmWZ3TWTM5maycl/W+2VvUDoeyPuz39eMP9Dyg9Ukt62OTs+jl+vj96MhDsv7de26V9R1nbZH1ffv0XrjhrnNl/Y7/uEXWt+3cqevb9ePPbNJ727Lk5gGZeTWFzhl1Zl5TZuYl2XlGtT5/bE7KPH5nzq+20zmf1sy7ctw8I66AAIShAQEIQwMCEEb/IQnORHYbueH+uAd42nAFBCAMDQhAGBoQgDBlPqNv0Cv0Vw4zZl7OtJm3U5i9RCuF/spiUOjnH1c6Z9GaeUW1+crkO985IOsH9n9b1k+srMj63d+8Vdbzns7JjI/rvWAHPvQJWY/m1qqdtaBzXnv27pX1669/l77/tnlZn80XZT2ZvWWlmefTmXlAlTm/q4nOOeWdOcBuXlbSz9+0+v1zBQQgDA0IQBgaEIAw5ICeehvN6ZxuZ/rri0ZO6mnEFRCAMDQgAGFoQADCZG/+T/2VwFWje2T9wmNflvVdM6uyXpnFWsvdWbJebH2urD++Yua5FHpe0R233ybrN374L07+T084oI+ZeUop6RxLSnoeUUpmb5b9mk/PQ3LzdE7/VyZmXk5a2uDjPykH9oQ39NpXv1be+7fequvnnavP7159VNbdPKDa5ITqid5bVlf68VPmjr/Wtvr1cQUEIAwNCEAYGhCAMOSATh05mmc39/mSE3oKcQUEIAwNCEAYGhCAMNn139H/5L3yse/K+mUrOiezbXBcv4JpnXNZLLbL+trgAllfWtZP/8ghnRO64bqXn/yfTjpgZqBS0jmjjeds3P1djsM9vvsdZXIk9v7u+d1XMvrzS2Yvm89RPenxT3rB+v2/5c1vkPW3v/31sr4wuybrTa1P8K7SOaC2MZ9fp+uN2RtWm71nXAEBCEMDAhCGBgQgDDkg4NSwl+0pxBUQgDA0IABhaEAAwpTZkrlBrW/QH+icweyUzvm0pc6xTMy4mjUTc/mnv/t7Wf+Hj9yoHyBtMfV5U99oTsbd330l4XIwG83puHlF7vHd69N7pfw8I31++uefMnX9+XzikzfL+q3/+hVZ//Df/rWs796p33+b9LyhXmb2jpkcT2FiaG2nz0+ugACEoQEBCEMDAhCGHNCTMe8HpxPzhv4froAAhKEBAQhDAwIQJrvmfZ+WN7jhNVtl/dzqW7K+fU4HBcr+rKwvVxfI+itee72sHz5iBgKlJz3/Sf9Gd/N2NsrNs9E5m/6czikNC52j6ZtvHMpO52gGpc7JmLVVqevp34Hr4yVZf+z4If0ESc/T8fOAXA5oo/OMnrQ375S+A/r8pz8p61u36BxQ2S7JemXmCTmdmSfEFRCAMDQgAGFoQADCkAMCziw/VTkhroAAhKEBAQhDAwIQprzk8pfIG9T1AVnPM52TqEuTYxmcK+vve/cHZP3wkROyntKCqU+b+pNyGicxX6OVun7RZZfL+rZC71XbMqV/h2we6ufvu71Olc4RdWYeU9f09OO367K+Vm+S9eWVoawfO65zYEeO6fqPWp2jOf05Me0Nv/5mWf/iv/2lrM9v1jmorDXzmDo9j6gz1zhcAQEIQwMCEIYGBCAMOSDgmeVZlRPiCghAGBoQgDA0IABhyh3P3yVvcPiBg7I+W+icxsqiDooceuwHsv6F274q6yldbOpub5TOobivyS655EJZP2/e5IAWdA5n+/x2WZ+akeXUL/U8liLXv4Pa2uSgOp2DqSuTMxrrryxGY50jGo/046+v6fsvHtWv/9CSPn/ufPRRWT9u95Lp1+f2mrmtcSsjff7Mz+jPv9/XOSH7+dbsBQNwhqIBAQhDAwIQhgYEIAwNCEAYGhCAMDQgAGHK+3WMIV3Vzct6Ndks6+tpRdZXsjn9ApKeF+Tn+bi6zjHsvmKnrL9wi85BLeT68c+e1zmQzQt63s3UrM6x9M1f+xWZvn+R6/dXmN9hdavf/8TkSFaXF2V9tKZzSs1YP/6meZ3z2TrS9fOfo8/Pj92uc2ydTfJszPq6zuENh2fLejPRx7dNZl5QoffecQUEIAwNCEAYGhCAMDQgAGFoQADC0IAAhKEBAQhT7p3XN8hOmJxGo/eCNWZt0nDe7O0ye8VS7eb96BxQf+cOWX/+nvNkfSF7XNanzDyebKAPUNeZ92/mHTWNnreTmV9BRWEe3ywGq1v9/qvJmq5Xbu+cfv5mrOfpVOb49Ut9/s8Pdf0tL3iprP/jXV+X9Y1yOZ+U6b1zRaHPz4Gbt1Xr48MVEIAwNCAAYWhAAMLQgACEoQEBCEMDAhCGBgQgTHnD8/QN7urpeTA/OqD3elWdznFUelxIOvviS2T96H2H9QOYVdp79+p5LtNJ50zG6zrHMmr0PJXvHzgk6w/ed0DW+32dE7pgjz5+uy64QNbnF/TnNxjogUNLx5Zk/b79/yPrJ1ZPyLqbR7Nl61ZZ37zJzKPqzLyb3MzbOccsbjvdyiOyXDXLst43Ob5kcmD9Qp8fXAEBCEMDAhCGBgQgDA0IQBgaEIAwNCAAYWhAAMK4aTupq3SOpq31XquxmQeTSp1DeNvv/7as//nv/aF+/D2X6/KFF8p6tfqQrD+6rN/fZKRzElUxL+tzu18k66OlJVn/wSO6/q39t8j6q994nayXZu/Yf39jv6wPps28pl27ZH1qweV4zDyrdb23bnVlLOtm3FD60v5bZf2iHT8r698/qI/f1de8XNYHg6Oy3rQ65zSZ6J//zvx8Z0nnyLgCAhCGBgQgDA0IQBjzL3gAZxg95PsZhisgAGFoQADC0IAAhLHfAVVjnaOoW50kaiY6Z5DlOmdwxc9dJeup1DmSK659hayP+roHf/6jH5b1n7/69bKeZ5tl/bZvfUbWnT1zOsd0sck5XXrl82X9/nvvlvVrX/UaWT9y+CFZv+LFOsfy6OJBWT+28mNZ7/X0+el+AMpG54Cmp/Tnu3fWzCMabOwrnXe9452yPtcu6QdY1vOsMrN3rTWL/0yMiCsgAHFoQADC0IAAhKEBAQhDAwIQhgYEIAwNCECY0kzrSWsmx1PnOoezMtY5gzLXr2B2OCvrb3zX78r6297/Vln/03d/QNZf9ku/Kes7BnogzGRdLz771atfKetzs2fJ+vycnodTZmaxU6df/8pjOsiRV3pv17Zz5mX9vPN0TmbfZXqvWTmrkzyzm/T50xvo41M2Ogdz3ze+KusXnaXnOfXzeVmfevRhWf+rt+nz+1Vv0jmrV/3atbKeTeucUmN+frtmXda5AgIQhgYEIAwNCEAY5gEBzyzmr6ueWfOCuAICEIYGBCAMDQhAmNKkRFLq6RzFidFhWZ90+p+kw1bvFfv6P39W1ruHHpH1G//oo7K+79IXyvrke1+X9Z2ymtLMVp1zmZ3SOaos078jxrXOabWdziEdeUQfv19+5atl3e2Ve96lei/b4iMPyPqOHTpHkwo9r6pIOoeWRvr4LS8uyvpsXz98m+t5QtVE//z0p/XevFqX04uvvlrWs05/pdRMdIfozPEfT/T5xxUQgDA0IABhaEAAwpADejKXo3A5DAA/Ia6AAIShAQEIQwMCEKbU/xc/pbGZZzMxORQTM0h5p+eJbNmyIOtf+vY9sj79HP011xXX/KKsP/igfvw86ePTM/N47BdOtT4+q4tHZf27935N1n/G5HSOHjwk62eZvVjnLGyR9fZxfQbee8cdsr6w9RxZH864oI6eV5NGOsczmeh6NtY/AG2ln780e/neeYOeBzQ1pec9tdPm5zfTZ2hrBoplub4/V0AAwtCAAIShAQEIQw4IeGZ5Rs37cbgCAhCGBgQgDA0IQBj7HdDKip6nYmIqKTPzfupS5xT2vVTvNbqu1jmLm276G1k//9I9sn73v+jXt6lbkvVupHNCJ06Yf9JXQ1leOa6ff31Z5zy+fMvNst7WOsfUM19JFJ3OsXSZyYHt1hOXhmaeUrtm5iVVeu+X22vVdjoH5HI+RabP33PM3rRN2/REprbUe9vWlk1OKOkcVZHpn++uIAcE4AxFAwIQhgYEIAwNCEAYGhCAMDQgAGFoQADC2L1g6yOTAzI5nC7pHESv1j2wHeicxxXXvlLWDy4dk/Whjomk40f1/Y+mFVnvt3pxU570C+gV+v0PpvTetr3PvVLWx5NLZD11+gypTRCsqnXOJDW6npuJVWWuc1KpNjmdWue0uqTv35mBOGYcVMr6Oidz2Uv0vKbBVpMD6umfzzzTUcCi0DmfXk/Xi1J/PlwBAQhDAwIQhgYEIAzzgICn17Nqns9GcQUEIAwNCEAYGhCAMKf9O6Cu0/NWJq3+J3E20C9xdFzncPa96CpZX1vV81JG6zrHs5rrHEmT6xxG1pgc1Ujv/apGP5T15SP6/muLi7LeVCanY/ZGVY3O8TRJnx9Z0s+/bce5sr57z/myXmRmXpF5/jzTr3/d7NV7za+8Rdb7Mzpn1JU6p7Te6npZ6McvMpPTa835beYhcQUEIAwNCEAYGhCAMDQgAGFoQADC0IAAhKEBAQhjc0CNmefSdbpemj99qWuTAzEtssv1DWY36Xk609N6nskr3nSdrO+/+SZZ70Y6Z9LP9LyUQV/PexkMNsv6rh0XyfrkxJKsd+ON7dVKLgdV6vOjV+r7l1P6819b1TmuqtWvv2n151eYeUXbzV6zNDSPP6MHCjVJnx8p6ZxP25mckT78qZfMwCOzF44rIABhaEAAwtCAAIRhHtCpc/NczL+a8SzHvJ9TwBUQgDA0IABhaEAAwpgUQ0rNROckirH+yqPt6R5XFDpH4L5QaXN9/6zsy/rU3JSsX/O618n6nV+4Wdbzic7RuHkzyeSshn39/idm71XP3H95Xc9zWR3peUJm7VSaKedkvTfQOam2W9VPUOrjV9X6J8Cs/Uq9GZ3DufIXXi7rQ/32kxkXlVozjyhzb8Dk6DK398/tVTObB7kCAhCGBgQgDA0IQBhyQE89ckLAT4grIABhaEAAwtCAAIQx01hSGq+ZnEFn5rl0+mumItf3N+NKUuv2NpX6+UszTqXWa5XSde/9Y1m/9TOfkvVD994l61MTfQAyk4Pqd7peDHROam6bPkCbtmyR9cbMe2panZOqXH2kj8/qmj4/mkY/fir07+gLd++T9cFQ55iazpxgudlbVpucmclB5bV+f+4Ly6xn5gGZIBNXQADC0IAAhKEBAQhDAwIQhgYEIAwNCEAYGhCAMOXXjukbLK/rHELZmnkhjdkbNtQ5FLcXLDX6BoO+3vtlB/ia53/ooQOy/v0f3KcfoDZ7m8zarabROZL10Zqs55l+/masH78zz1+Yx2/NXqncHIDWBbWS2btl5lVlnc7ZuHqX3Lwes3ct0/OYXE4oM0EeE8NLJmaWOhPUK3v655srIABhaEAAwtCAAIRhHtBTj3k/wE+IKyAAYWhAAMLQgACEKT93v77B4UoHAXb1dI5hswkStCN9fzNOJS3rcsrM3qPC5SBMvVvWOZu0+LgsD8d6r9J4pO9vtoqlZZODaczestbkXHKzN6qX668Zc7MXrjS/IstS57wGbq9YOiHrmcnZLJ44qO/f0yfQwLz+ZOYpVeYErc3n53JSyeS03P0bk9PiCghAGBoQgDA0IABhaEAAwtCAAIShAQEIQwMCEKbMzP/m77d63kfRmHlBJqdQmpxQ4WIK5vW5xWdmHIz9w65D9+2X9V0Lc7I+nem9W+tr+hW4eT3jkT6AdaFzSHXSOZrcJJEGvSlZLzI9L8Z9Ppl5/pmeyWm5eUAmp3Tsx4/Ierds5mVN6ePbm9X1arwk6y6n03W63rocnKm7PzblCghAGBoQgDA0IABhaEAAwtCAAIShAQEIQwMCEKZ82cX6Bl+9XecoilbnSCZu71M2rV+AyQHNmJyJ23t1+MEfyvqd/36LrK8cfkDWh50+Pv1O732antE5oWxa1ydz+gCuT/TxryozL6jROZfM5MQKk7MpzDydXq2PX25OoNzkkJLZa5f06ZU+8/GPyfqRIw/L+ns++CeynmV6nlBugnRd6+b96OOfmb1njZmnxBUQgDA0IABhaEAAwrAX7NSx9wuKOz/MX0/9dOEKCEAYGhCAMDQgAGHK1y3oG9zd6L1Udi9TX+d0ernZi2RyFtNDnWO4/67bZP2/PvUR/QTrx2V5Jun3N+jrHE3V6MfPC318itLs3TI5nCzXOaWsMTmPVtfdYrXcDKTK3cObE6Qw827yRs9TcsZm71VT6ed/x3s/KOuF+fkp+voaoml1TqyqzOef6cfvOp2T6lr2ggE4Q9GAAIShAQEIQw7o1LkcBzmhn27kfE4BV0AAwtCAAIShAQEIU+oUSkqzM2ZvUaZzDrt375T1sxe2yPra8aOyPpzWOZm9l++V9R1b3yPrH/+z98t6PlmVdbd3yc2baZLOEeXmd0huFqNl5iurQalzNpX5xqNo3V4qs/escTkqffyqTs+z6iodNOrMPKneQOeY/uBDeh5Qa35+6ka//nGt622r5yWlcl7f3xwfs9YvpVz/fHAFBCAMDQhAGBoQgDDkgJ565ITObOR0ziBcAQEIQwMCEIYGBCBMtmhyGJ+75R5Z75W6h/XNXiAzbiSV5Zysz0zPy3pvaL7mmuh5JUXS9Z6Zt/PtO79y8n96wgG//bOfkvd382q62uRYOp1jyZLZK2VyTIXJ4dQjk1Mxx6/K9fuvTM5odvP8yf/pCd8B/cbvvFvef8dzzpd1Nw9nknTdvf9JrXM0qdU/v25vmzs/chf0yfXPV2F+/LgCAhCGBgQgDA0IQBhyQE8/cijA/+EKCEAYGhCAMDQgAGGym754h7xBl3ROoTU9rFfqHIEZV5OyTN+gn83Kej4we8ncXqqhznHMDPXepczsreqZIJRZq5WqtWVZX6tOyPpodcU8vs7xFIV+gVODGVl3SvOVWWFiKr1eX9bbnj6/e4XO0VS1Pn7rI/35dI2e11OanFbTmL1ruX79WasPYGPO39acn25vIFdAAMLQgACEoQEBCEMDAhCGBgQgDA0IQBgaEIAw/wvH8q2r7kV+ewAAAABJRU5ErkJggg==';
+
+// ==================== 像素角色生成器（杜浩） ====================
+function createPixelChar() {
+    const size = 48;
+    const pixelSize = size / 16;
+
+    const colors = {
+        skin: '#ffdcb4',
+        hair: '#1a1a1a',
+        shirt: '#ffffff',
+        pants: '#3264a8',
+        shoes: '#3c3c3c',
+        glasses: '#505050',
+        lens: 'rgba(200,230,255,0.6)',
+        eye: '#323232',
+        mouth: '#c86464'
+    };
+
+    const blackEggColors = {
+        skin: '#1a1a1a',
+        hair: '#0d0d0d',
+        shirt: '#1a1a1a',
+        pants: '#1a1a1a',
+        shoes: '#0d0d0d',
+        glasses: '#333333',
+        lens: 'rgba(100,100,100,0.4)',
+        eye: '#ffffff',
+        mouth: '#444444'
+    };
+
+    const design = [
+        [0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0],
+        [0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0],
+        [0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+        [0,0,1,1,2,2,2,2,2,2,2,1,1,0,0,0],
+        [0,0,1,2,2,5,3,3,3,5,2,2,1,0,0,0],
+        [0,0,1,2,2,3,4,4,4,3,2,2,1,0,0,0],
+        [0,0,0,2,2,2,2,6,2,2,2,2,0,0,0,0],
+        [0,0,0,0,2,2,2,2,2,2,2,0,0,0,0,0],
+        [0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0],
+        [0,0,0,7,7,7,7,7,7,7,7,7,0,0,0,0],
+        [0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0],
+        [0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0],
+        [0,0,0,8,8,8,0,0,0,8,8,8,0,0,0,0],
+        [0,0,0,8,8,8,0,0,0,8,8,8,0,0,0,0],
+        [0,0,0,9,9,0,0,0,0,0,9,9,0,0,0,0],
+        [0,0,0,9,9,0,0,0,0,0,9,9,0,0,0,0],
+    ];
+
+    const colorMap = {
+        0: null, 1: colors.hair, 2: colors.skin, 3: colors.glasses,
+        4: colors.lens, 5: colors.eye, 6: colors.mouth, 7: colors.shirt,
+        8: colors.pants, 9: colors.shoes
+    };
+
+    function drawFrame(ctx, x, y, frame, scale = 1, isBlackEgg = false) {
+        const activeColors = isBlackEgg ? blackEggColors : colors;
+        const activeColorMap = {
+            0: null, 1: activeColors.hair, 2: activeColors.skin, 3: activeColors.glasses,
+            4: activeColors.lens, 5: activeColors.eye, 6: activeColors.mouth, 7: activeColors.shirt,
+            8: activeColors.pants, 9: activeColors.shoes
+        };
+        const s = pixelSize * scale;
+        for (let row = 0; row < 16; row++) {
+            for (let col = 0; col < 16; col++) {
+                const type = design[row][col];
+                if (type === 0) continue;
+                ctx.fillStyle = activeColorMap[type];
+                let dx = col, dy = row;
+                if (frame === 'run1' && row >= 12) {
+                    if (col < 6) { dx = col - 1; dy = row - (col < 3 ? 1 : 0); }
+                    if (col > 8) { dx = col + 1; dy = row - (col > 11 ? 1 : 0); }
+                } else if (frame === 'run2' && row >= 12) {
+                    if (col < 6) { dx = col + 1; dy = row - (col < 3 ? 1 : 0); }
+                    if (col > 8) { dx = col - 1; dy = row - (col > 11 ? 1 : 0); }
+                } else if (frame === 'jump' && row >= 12) {
+                    if (col < 6) { dy = row - 2; }
+                    if (col > 8) { dy = row - 2; }
+                }
+                ctx.fillRect(x + dx * s, y + dy * s, s, s);
+            }
+        }
+    }
+
+    return { drawFrame, size };
+}
+
+const pixelChar = createPixelChar();
+
+// ==================== 像素老师形象生成器（基于图片特征） ====================
+function createTeacherPixelChar() {
+    const size = 60; // 宽度与普通处分单一致
+    const pixelSize = size / 16;
+
+    const colors = {
+        skin: '#f5d0b0',
+        hair: '#2d1f14',
+        shirt: '#f0f0f0',
+        glasses: '#a0a0a0',
+        lens: 'rgba(180,210,240,0.5)',
+        eye: '#2a2a2a',
+        mouth: '#c07070',
+        collar: '#333333',
+        shadow: 'rgba(0,0,0,0.15)'
+    };
+
+    // 16x16 像素老师设计 (圆脸、眼镜、白上衣)
+    const design = [
+        [0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0],
+        [0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0],
+        [0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0],
+        [0,0,1,1,2,2,2,2,2,2,2,1,1,0,0,0],
+        [0,0,1,2,2,5,3,3,3,3,5,2,1,0,0,0],
+        [0,0,1,2,2,3,4,4,4,4,3,2,1,0,0,0],
+        [0,0,0,2,2,2,2,6,6,2,2,2,0,0,0,0],
+        [0,0,0,0,2,2,2,2,2,2,2,0,0,0,0,0],
+        [0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0],
+        [0,0,0,7,7,7,7,7,7,7,7,7,0,0,0,0],
+        [0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0],
+        [0,0,7,7,7,7,7,7,7,7,7,7,7,0,0,0],
+        [0,0,0,7,7,7,0,0,0,7,7,7,0,0,0,0],
+        [0,0,0,7,7,7,0,0,0,7,7,7,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ];
+
+    const colorMap = {
+        0: null, 1: colors.hair, 2: colors.skin, 3: colors.glasses,
+        4: colors.lens, 5: colors.eye, 6: colors.mouth, 7: colors.shirt
+    };
+
+    const blackEggColors = {
+        skin: '#1a1a1a', hair: '#0d0d0d', shirt: '#1a1a1a',
+        pants: '#1a1a1a', shoes: '#0d0d0d', glasses: '#333333',
+        lens: 'rgba(100,100,100,0.4)', eye: '#ffffff', mouth: '#444444'
+    };
+
+    function drawFrame(ctx, x, y, frame, scale = 1, isBlackEgg = false) {
+        const activeColors = isBlackEgg ? blackEggColors : colors;
+        const activeColorMap = {
+            0: null, 1: activeColors.hair, 2: activeColors.skin, 3: activeColors.glasses,
+            4: activeColors.lens, 5: activeColors.eye, 6: activeColors.mouth, 7: activeColors.shirt,
+            8: activeColors.pants, 9: activeColors.shoes
+        };
+        const s = pixelSize * scale;
+        for (let row = 0; row < 16; row++) {
+            for (let col = 0; col < 16; col++) {
+                const type = design[row][col];
+                if (type === 0) continue;
+                ctx.fillStyle = activeColorMap[type];
+                let dx = col, dy = row;
+                // 轻微走路动画
+                if (frame === 'walk1' && row >= 12) {
+                    if (col < 6) { dx = col - 1; }
+                    if (col > 8) { dx = col + 1; }
+                } else if (frame === 'walk2' && row >= 12) {
+                    if (col < 6) { dx = col + 1; }
+                    if (col > 8) { dx = col - 1; }
+                }
+                ctx.fillRect(x + dx * s, y + dy * s, s, s);
+            }
+        }
+    }
+
+    return { drawFrame, size };
+}
+
+const teacherPixelChar = createTeacherPixelChar();
+
+// ==================== 处分单障碍物 ====================
+function createPunishmentCanvas() {
+    const c = document.createElement('canvas');
+    c.width = 60; c.height = 45;
+    const cx = c.getContext('2d');
+
+    cx.fillStyle = '#fffaf0';
+    cx.fillRect(0, 0, 60, 45);
+    cx.strokeStyle = '#b0b0b0';
+    cx.lineWidth = 2;
+    cx.strokeRect(0, 0, 60, 45);
+
+    cx.fillStyle = '#c62828';
+    cx.fillRect(4, 4, 52, 12);
+
+    cx.fillStyle = '#fff';
+    cx.font = 'bold 9px sans-serif';
+    cx.textAlign = 'center';
+    cx.fillText('处分单', 30, 14);
+
+    cx.strokeStyle = '#999';
+    cx.lineWidth = 1;
+    cx.beginPath();
+    cx.moveTo(6, 22); cx.lineTo(54, 22);
+    cx.moveTo(6, 28); cx.lineTo(54, 28);
+    cx.moveTo(6, 34); cx.lineTo(40, 34);
+    cx.stroke();
+
+    cx.strokeStyle = '#c62828';
+    cx.lineWidth = 2;
+    cx.beginPath();
+    cx.arc(48, 36, 6, 0, Math.PI * 2);
+    cx.stroke();
+
+    return c;
+}
+
+const punishmentImg = createPunishmentCanvas();
+
+// ==================== 背景绘制 ====================
+function drawBackground(ctx, offset) {
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.55);
+    skyGrad.addColorStop(0, '#87CEEB');
+    skyGrad.addColorStop(1, '#E0F6FF');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, H * 0.55);
+
+    // 云朵 - 循环滚动
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    const cloudSpacing = W * 0.6 + 200;
+    const cloudOffset = (offset * 0.1) % cloudSpacing;
+    const numClouds = Math.ceil(W / cloudSpacing) + 2;
+    const cloudData = [
+        {y: 60, size: 40}, {y: 40, size: 50}, {y: 70, size: 35},
+        {y: 50, size: 45}, {y: 30, size: 55}, {y: 80, size: 30}
+    ];
+    for (let i = -1; i < numClouds; i++) {
+        const idx = ((i % cloudData.length) + cloudData.length) % cloudData.length;
+        const cd = cloudData[idx];
+        drawCloud(ctx, i * cloudSpacing + 100 - cloudOffset, cd.y, cd.size);
+    }
+
+    // 远景建筑 - 循环滚动
+    const buildingSpacing = W * 0.8 + 400;
+    const buildingOffset = (offset * 0.3) % buildingSpacing;
+    const numBuildings = Math.ceil(W / buildingSpacing) + 2;
+    for (let i = -1; i < numBuildings; i++) {
+        drawCampusBuilding(ctx, i * buildingSpacing - buildingOffset, H * 0.55);
+    }
+}
+
+function drawCloud(ctx, x, y, size) {
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.arc(x + size * 0.8, y - size * 0.3, size * 0.7, 0, Math.PI * 2);
+    ctx.arc(x + size * 1.5, y, size * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawCampusBuilding(ctx, x, baseY) {
+    const scale = H / 800;
+    const s = scale;
+
+    ctx.fillStyle = '#C84B31';
+    ctx.fillRect(x + 20*s, baseY - 200*s, 280*s, 200*s);
+
+    ctx.fillStyle = '#F5F5F5';
+    ctx.fillRect(x + 20*s, baseY - 180*s, 280*s, 15*s);
+    ctx.fillRect(x + 20*s, baseY - 80*s, 280*s, 15*s);
+
+    ctx.fillStyle = '#E8E8E8';
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 6; col++) {
+            ctx.fillRect(x + (35 + col * 42)*s, baseY - (160 - row * 50)*s, 25*s, 30*s);
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x + (35 + col * 42)*s, baseY - (160 - row * 50)*s, 25*s, 30*s);
+        }
+    }
+
+    ctx.fillStyle = '#C84B31';
+    ctx.fillRect(x + 130*s, baseY - 320*s, 60*s, 120*s);
+
+    ctx.fillStyle = '#F5F5F5';
+    ctx.fillRect(x + 130*s, baseY - 280*s, 60*s, 80*s);
+
+    ctx.fillStyle = '#FFF';
+    ctx.beginPath();
+    ctx.arc(x + 160*s, baseY - 240*s, 22*s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + 160*s, baseY - 240*s);
+    ctx.lineTo(x + 160*s, baseY - 255*s);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + 160*s, baseY - 240*s);
+    ctx.lineTo(x + 170*s, baseY - 240*s);
+    ctx.stroke();
+
+    ctx.fillStyle = '#2C3E50';
+    ctx.beginPath();
+    ctx.moveTo(x + 120*s, baseY - 320*s);
+    ctx.lineTo(x + 160*s, baseY - 380*s);
+    ctx.lineTo(x + 200*s, baseY - 320*s);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#C84B31';
+    ctx.fillRect(x + 320*s, baseY - 150*s, 150*s, 150*s);
+    ctx.fillStyle = '#F5F5F5';
+    ctx.fillRect(x + 320*s, baseY - 130*s, 150*s, 10*s);
+
+    ctx.fillStyle = '#228B22';
+    for (let i = 0; i < 5; i++) {
+        const tx = x + (30 + i * 90) * s;
+        ctx.beginPath();
+        ctx.arc(tx, baseY - 10*s, 20*s, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.fillStyle = '#CD5C5C';
+    ctx.beginPath();
+    ctx.arc(x + 60*s, baseY - 15*s, 25*s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#8B0000';
+    ctx.beginPath();
+    ctx.arc(x + 75*s, baseY - 25*s, 18*s, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+// ==================== 操场地面 ====================
+let groundOffset = 0;
+function drawGround(ctx, speed) {
+    groundOffset = (groundOffset + speed) % 40;
+    const groundY = H * 0.55;
+    const groundH = H * 0.45;
+
+    const grassGrad = ctx.createLinearGradient(0, groundY, 0, H);
+    grassGrad.addColorStop(0, '#4CAF50');
+    grassGrad.addColorStop(0.3, '#45a049');
+    grassGrad.addColorStop(1, '#2E7D32');
+    ctx.fillStyle = grassGrad;
+    ctx.fillRect(0, groundY, W, groundH);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 3;
+    for (let i = -40; i < W + 40; i += 40) {
+        const x = i - groundOffset;
+        ctx.beginPath();
+        ctx.moveTo(x, groundY);
+        ctx.lineTo(x - 20, H);
+        ctx.stroke();
+    }
+
+    ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+    ctx.lineWidth = 1;
+    for (let y = groundY; y < H; y += 8) {
+        const wave = Math.sin((y + groundOffset * 3) * 0.05) * 3;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        for (let x = 0; x < W; x += 10) {
+            ctx.lineTo(x, y + Math.sin((x + groundOffset) * 0.1) * 2 + wave);
+        }
+        ctx.stroke();
+    }
+
+    ctx.fillStyle = '#C0C0C0';
+    const stones = [
+        {x: 100 - groundOffset * 0.5, y: groundY + 30, r: 15},
+        {x: 350 - groundOffset * 0.5, y: groundY + 50, r: 12},
+        {x: 600 - groundOffset * 0.5, y: groundY + 25, r: 18},
+        {x: W + 100 - groundOffset * 0.5, y: groundY + 40, r: 14},
+    ];
+    stones.forEach(stone => {
+        let sx = ((stone.x % (W + 200)) + (W + 200)) % (W + 200);
+        if (sx < -50) sx += W + 200;
+        ctx.beginPath();
+        ctx.ellipse(sx, stone.y, stone.r, stone.r * 0.7, 0, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    ctx.fillStyle = '#2E7D32';
+    const bushes = [
+        {x: 50 - groundOffset * 0.7, y: groundY},
+        {x: 200 - groundOffset * 0.7, y: groundY},
+        {x: 450 - groundOffset * 0.7, y: groundY},
+        {x: 700 - groundOffset * 0.7, y: groundY},
+        {x: W + 50 - groundOffset * 0.7, y: groundY},
+    ];
+    bushes.forEach(bush => {
+        let bx = ((bush.x % (W + 200)) + (W + 200)) % (W + 200);
+        if (bx < -60) bx += W + 200;
+        ctx.beginPath();
+        ctx.arc(bx, bush.y, 25, Math.PI, 0);
+        ctx.arc(bx + 30, bush.y, 20, Math.PI, 0);
+        ctx.arc(bx + 55, bush.y, 22, Math.PI, 0);
+        ctx.fill();
+    });
+}
+
+// ==================== 游戏状态 ====================
+let gameState = 'start';
+let score = 0;
+let highScore = localStorage.getItem('parkourHighScore') || 0;
+let totalScore = parseInt(localStorage.getItem('totalScore')) || 0;
+let hasBlackEgg = localStorage.getItem('hasBlackEgg') === 'true';
+let hasTrail = localStorage.getItem('hasTrail') === 'true';
+let frame = 0;
+let gameSpeed = 4;
+let obstacles = [];
+let particles = [];
+let teacherAnimFrame = 0;
+let teacherAnimTimer = 0;
+
+const player = {
+    x: 80,
+    y: 0,
+    vy: 0,
+    width: 48,
+    height: 48,
+    onGround: false,
+    jumpPower: -13,
+    gravity: 0.6,
+    animFrame: 0,
+    animTimer: 0
+};
+
+const groundY = () => H * 0.55;
+
+// ==================== 字幕系统 ====================
+const subtitleBox = document.getElementById('subtitleBox');
+const subtitleText = document.getElementById('subtitleText');
+
+function showSubtitle(text, callback) {
+    subtitleText.textContent = text;
+    subtitleBox.classList.add('show');
+    setTimeout(() => {
+        subtitleBox.classList.remove('show');
+        if (callback) setTimeout(callback, 300);
+    }, 1500);
+}
+
+// ==================== 游戏逻辑 ====================
+function startGame() {
+    gameState = 'playing';
+    score = 0;
+    frame = 0;
+    gameSpeed = 4;
+    obstacles = [];
+    particles = [];
+    teacherAnimFrame = 0;
+    teacherAnimTimer = 0;
+    player.y = groundY() - player.height;
+    player.vy = 0;
+    player.onGround = true;
+    subtitleBox.classList.remove('show');
+    document.getElementById('startScreen').style.display = 'none';
+    document.getElementById('gameOverScreen').style.display = 'none';
+    document.getElementById('highScore').textContent = '最高分: ' + highScore;
+    document.getElementById('jumpHint').style.display = 'block';
+    setTimeout(() => {
+        document.getElementById('jumpHint').style.display = 'none';
+    }, 3000);
+}
+
+function gameOver() {
+    gameState = 'gameover';
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('parkourHighScore', highScore);
+    }
+    // 累计分数
+    totalScore += Math.floor(score);
+    localStorage.setItem('totalScore', totalScore);
+    document.getElementById('finalScore').textContent = '得分: ' + Math.floor(score);
+    document.getElementById('gameOverScreen').style.display = 'flex';
+}
+
+function jump() {
+    if (gameState !== 'playing') return;
+    if (player.onGround) {
+        player.vy = player.jumpPower;
+        player.onGround = false;
+        for (let i = 0; i < 6; i++) {
+            particles.push({
+                x: player.x + player.width / 2,
+                y: player.y + player.height,
+                vx: (Math.random() - 0.5) * 4,
+                vy: -Math.random() * 3,
+                life: 20,
+                color: '#4CAF50'
+            });
+        }
+    }
+}
+
+function spawnObstacle() {
+    const types = ['normal', 'double', 'flying'];
+    const type = types[Math.floor(Math.random() * types.length)];
+
+    if (type === 'normal') {
+        obstacles.push({
+            x: W,
+            y: groundY() - 45,
+            width: 60,
+            height: 45,
+            type: 'punishment',
+            speed: gameSpeed
+        });
+    } else if (type === 'double') {
+        // 老师像素形象障碍物，宽度60与普通处分单一致
+        obstacles.push({
+            x: W,
+            y: groundY() - 60,
+            width: 60,
+            height: 60,
+            type: 'teacher',
+            speed: gameSpeed
+        });
+    } else if (type === 'flying') {
+        obstacles.push({
+            x: W,
+            y: groundY() - 100,
+            width: 60,
+            height: 45,
+            type: 'punishment',
+            speed: gameSpeed + 1,
+            floating: true,
+            floatOffset: Math.random() * Math.PI * 2
+        });
+    }
+}
+
+function update() {
+    if (gameState !== 'playing') return;
+
+    frame++;
+    score += 0.1;
+    gameSpeed = 4 + Math.floor(score / 100) * 0.5;
+
+    // 老师动画帧
+    teacherAnimTimer++;
+    if (teacherAnimTimer > 8) {
+        teacherAnimTimer = 0;
+        teacherAnimFrame = (teacherAnimFrame + 1) % 2;
+    }
+
+    player.vy += player.gravity;
+    player.y += player.vy;
+
+    const gY = groundY();
+    if (player.y + player.height >= gY) {
+        player.y = gY - player.height;
+        player.vy = 0;
+        player.onGround = true;
+    } else {
+        player.onGround = false;
+    }
+
+    player.animTimer++;
+    if (player.animTimer > 6) {
+        player.animTimer = 0;
+        player.animFrame = (player.animFrame + 1) % 2;
+    }
+
+    if (frame % Math.max(40, 120 - Math.floor(score / 10)) === 0) {
+        spawnObstacle();
+    }
+
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        obs.x -= obs.speed;
+
+        if (obs.floating) {
+            obs.y = groundY() - 100 + Math.sin(frame * 0.05 + obs.floatOffset) * 20;
+        }
+
+        // 碰撞检测
+        const px = player.x + 8;
+        const py = player.y + 4;
+        const pw = player.width - 16;
+        const ph = player.height - 8;
+
+        if (px < obs.x + obs.width - 5 &&
+            px + pw > obs.x + 5 &&
+            py < obs.y + obs.height - 5 &&
+            py + ph > obs.y + 5) {
+
+            // 如果是老师形象障碍物，显示字幕
+            if (obs.type === 'teacher') {
+                gameState = 'subtitle'; // 暂停游戏状态
+                showSubtitle('下学生处去', () => {
+                    gameOver();
+                });
+                return;
+            } else {
+                gameOver();
+                return;
+            }
+        }
+
+        if (obs.x + obs.width < 0) {
+            obstacles.splice(i, 1);
+        }
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    if (frame % 30 === 0) {
+        particles.push({
+            x: Math.random() * W,
+            y: groundY() - 20,
+            vx: -gameSpeed,
+            vy: -0.5,
+            life: 40,
+            color: `rgba(255,255,255,${Math.random() * 0.3})`
+        });
+    }
+
+    document.getElementById('score').textContent = '得分: ' + Math.floor(score);
+}
+
+function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    drawBackground(ctx, frame * gameSpeed);
+    drawGround(ctx, gameSpeed);
+
+    if (gameState === 'playing' || gameState === 'subtitle' || gameState === 'gameover') {
+        obstacles.forEach(obs => {
+            if (obs.type === 'teacher') {
+                // 绘制像素老师形象
+                const tAnim = teacherAnimFrame === 0 ? 'walk1' : 'walk2';
+                teacherPixelChar.drawFrame(ctx, obs.x, obs.y, tAnim);
+
+                // 老师阴影
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.beginPath();
+                ctx.ellipse(
+                    obs.x + obs.width / 2,
+                    groundY(),
+                    obs.width / 2 * 0.8,
+                    4,
+                    0, 0, Math.PI * 2
+                );
+                ctx.fill();
+            } else {
+                ctx.drawImage(punishmentImg, obs.x, obs.y, obs.width, obs.height);
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.fillRect(obs.x + 5, groundY() - 3, obs.width - 10, 3);
+            }
+        });
+
+        let anim = 'idle';
+        if (!player.onGround) {
+            anim = 'jump';
+        } else if (gameState === 'playing') {
+            anim = player.animFrame === 0 ? 'run1' : 'run2';
+        }
+
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.beginPath();
+        ctx.ellipse(
+            player.x + player.width / 2,
+            groundY(),
+            player.width / 2 * (1 - (groundY() - player.y - player.height) / 200),
+            4,
+            0, 0, Math.PI * 2
+        );
+        ctx.fill();
+
+        // 主角固定使用用户提供的原始大头像：不裁切、不调色、不锐化、不重绘；不使用动作帧。
+        if (bossPortrait.complete && bossPortrait.naturalWidth) {
+            const portraitSize = Math.max(player.width, player.height) * 1.75;
+            const portraitX = player.x + player.width / 2 - portraitSize / 2;
+            const portraitY = player.y + player.height - portraitSize;
+            ctx.drawImage(bossPortrait, portraitX, portraitY, portraitSize, portraitSize);
+        }
+
+        particles.forEach(p => {
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, 3, 3);
+        });
+    }
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+// ==================== 事件绑定 ====================
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('restartBtn').addEventListener('click', startGame);
+
+// 更新主页累计分数显示
+function updateTotalScoreDisplay() {
+    const el = document.getElementById('totalScoreDisplay');
+    if (el) el.textContent = '累计分数: ' + totalScore;
+}
+updateTotalScoreDisplay();
+
+// 商店系统
+const shopOverlay = document.getElementById('shopOverlay');
+const shopWindow = document.getElementById('shopWindow');
+
+function openShop() {
+    document.getElementById('shopTotalScore').textContent = '累计分数: ' + totalScore;
+    updateShopButtons();
+    shopOverlay.classList.add('show');
+}
+
+function closeShop() {
+    shopOverlay.classList.remove('show');
+}
+
+function updateShopButtons() {
+    const blackEggBtn = document.getElementById('buyBlackEgg');
+    const trailBtn = document.getElementById('buyTrail');
+
+    if (hasBlackEgg) {
+        blackEggBtn.textContent = '已购买';
+        blackEggBtn.classList.add('owned');
+        blackEggBtn.disabled = true;
+    } else {
+        blackEggBtn.textContent = '购买';
+        blackEggBtn.classList.remove('owned');
+        blackEggBtn.disabled = totalScore < 2000;
+    }
+
+    if (hasTrail) {
+        trailBtn.textContent = '已购买';
+        trailBtn.classList.add('owned');
+        trailBtn.disabled = true;
+    } else {
+        trailBtn.textContent = '购买';
+        trailBtn.classList.remove('owned');
+        trailBtn.disabled = totalScore < 20000;
+    }
+}
+
+document.getElementById('shopBtn').addEventListener('click', openShop);
+document.getElementById('shopCloseBtn').addEventListener('click', closeShop);
+shopOverlay.addEventListener('click', (e) => {
+    if (e.target === shopOverlay) closeShop();
+});
+
+// ==================== 前往主页 ====================
+function goHome() {
+    gameState = 'start';
+    document.getElementById('gameOverScreen').style.display = 'none';
+    document.getElementById('startScreen').style.display = 'flex';
+    updateTotalScoreDisplay();
+    document.getElementById('highScore').textContent = '最高分: ' + highScore;
+    document.getElementById('score').textContent = '得分: 0';
+}
+
+document.getElementById('homeBtn').addEventListener('click', goHome);
+
+// ==================== 灵力开发（后门） ====================
+// 主界面左上角四个大字「灵力开发」，长按 2 秒后累计分数 +999999
+const devTrigger = document.getElementById('devTrigger');
+let devHoldTimer = null;
+let devHolding = false;
+
+function startDevHold(e) {
+    if (e) e.preventDefault();
+    if (devHolding) return;
+    devHolding = true;
+    devTrigger.classList.add('holding');
+    devHoldTimer = setTimeout(() => {
+        devHolding = false;
+        devTrigger.classList.remove('holding');
+        totalScore += 999999;
+        localStorage.setItem('totalScore', totalScore);
+        updateTotalScoreDisplay();
+        const shopTotalEl = document.getElementById('shopTotalScore');
+        if (shopTotalEl) shopTotalEl.textContent = '累计分数: ' + totalScore;
+        devTrigger.textContent = '+999999';
+        devTrigger.style.color = '#ffd700';
+        setTimeout(() => { devTrigger.textContent = '灵力开发'; devTrigger.style.color = ''; }, 1200);
+    }, 2000);
+}
+function cancelDevHold() {
+    if (devHoldTimer) { clearTimeout(devHoldTimer); devHoldTimer = null; }
+    devHolding = false;
+    devTrigger.classList.remove('holding');
+}
+devTrigger.addEventListener('pointerdown', startDevHold);
+devTrigger.addEventListener('pointerup', cancelDevHold);
+devTrigger.addEventListener('pointerleave', cancelDevHold);
+devTrigger.addEventListener('pointercancel', cancelDevHold);
+devTrigger.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ==================== 骗局弹窗 ====================
+// 玩家购买皮肤（扣钱）后弹出大字「你被骗了!」，点击「好的」返回主界面，皮肤效果永不显示
+const scamOverlay = document.getElementById('scamOverlay');
+function showScam() {
+    scamOverlay.classList.add('show');
+}
+document.getElementById('scamOkBtn').addEventListener('click', () => {
+    scamOverlay.classList.remove('show');
+    closeShop();
+    goHome();
+});
+
+document.getElementById('buyBlackEgg').addEventListener('click', () => {
+    if (hasBlackEgg) return;
+    if (totalScore >= 2000) {
+        totalScore -= 2000;
+        hasBlackEgg = true;
+        localStorage.setItem('totalScore', totalScore);
+        localStorage.setItem('hasBlackEgg', 'true');
+        updateTotalScoreDisplay();
+        document.getElementById('shopTotalScore').textContent = '累计分数: ' + totalScore;
+        updateShopButtons();
+        showScam();
+    }
+});
+
+document.getElementById('buyTrail').addEventListener('click', () => {
+    if (hasTrail) return;
+    if (totalScore >= 20000) {
+        totalScore -= 20000;
+        hasTrail = true;
+        localStorage.setItem('totalScore', totalScore);
+        localStorage.setItem('hasTrail', 'true');
+        updateTotalScoreDisplay();
+        document.getElementById('shopTotalScore').textContent = '累计分数: ' + totalScore;
+        updateShopButtons();
+        showScam();
+    }
+});
+
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    jump();
+});
+
+canvas.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    jump();
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'ArrowUp') {
+        e.preventDefault();
+        jump();
+    }
+});
+
+if (typeof wx !== 'undefined') {
+    wx.ready(() => {
+        wx.updateAppMessageShareData({
+            title: '杜浩快跑',
+            desc: '我在《杜浩快跑》校园跑酷中跑了' + Math.floor(score) + '分，快来挑战！',
+            link: window.location.href,
+            success: () => {}
+        });
+    });
+}
+
+loop();
+</script>
+</body>
+</html>
